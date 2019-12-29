@@ -99,4 +99,106 @@ spec:
 Once the pod is created, you can change the time with the command as below;
 ```
 kubectl exec kernel-change -- date +%T -s "12:00:00"
+kubectl exec kernel-change -- date
 ```
+##### Restrict file access only to volume and not the container file system
+
+As the container file system is ephemeral, we can restrict the process from writing to local file system as given in the below yaml. We need to set readOnlyRootFilesystem property of the securityContext.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: read-only-pod
+spec:
+  containers:
+  - name: read-only-pod
+    image: alpine
+    command: ['/bin/sleep','999999']
+    securityContext:
+      readOnlyRootFilesystem: true
+    volumeMounts:
+    - name: my-vol
+      mountPath: /volume
+      readOnly: false
+  volumes:
+  - name: my-vol
+    emptyDir: {}
+```
+Once the Pod is created successfully, try to create a file in container's local file system as below and you will get an error.
+```
+kubectl exec read-only-pod touch /file.txt
+```
+Now create the file under the volume and you will be able to create it. You can also see the file if you list the contents of volume
+
+```
+kubectl exec read-only-pod touch /volume/file.txt
+
+kubectl exec read-only-pod ls /volume
+```
+### SecurityContext for Pod
+Its the same SecurityContext property which needs to be configured in pod level. Let us look at the different group level access to the container and Pod level as in the yaml below:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: group-context
+spec:
+  securityContext:
+    fsGroup: 555
+    supplementalGroups: [666, 777]
+  containers:
+  - name: first
+    image: alpine
+    command: ['/bin/sleep','999999']
+    securityContext:
+      runAsUser: 1111
+    volumeMounts:
+    - name: shared-vol
+      mountPath: /volume
+      readOnly: false
+  - name: second
+    image: alpine
+    command: ['/bin/sleep', '999999']
+    securityContext:
+      runAsUser: 2222
+    volumeMounts:
+    - name: shared-vol
+      mountPath: /volume
+      readOnly: false
+  volumes:
+  - name: shared-vol
+    emptyDir: {}
+```
+
+We have 2 containers in the spec. First container is assigned with the user 1111 and the second container is assigned with the user 2222. Also we are setting 555 as the fsGroup access in the Pod level.
+
+Once the pod is created, open the shell to first container and execute the these commands.
+```
+kubectl exec -it group-context -c first sh
+```
+Look at the id in the shell command
+```
+id
+```
+You will see the user id as 1111 and the groups will be assigned with 555,666 and 777.
+Create a file in the volume and see how the file is created. You will see that the 1111 is assigned to the user id of the file and the groupid is 555 as we specified in fsGroup.
+```
+echo test > /volume/sample.txt
+
+ls -l /volume
+```
+
+Now, create a file in local file system and see how the userid and groupid are assigned.
+
+```
+echo test1 > /tmp/file.txt
+
+ls -l /tmp
+```
+You will see that the file is assigned with same user id as 1111 but the groupid is root.
+
+## Conclusion
+In this article, we have seen different options for SecurityContext for both Container level and Pod Level. You can refer all the options for SecurityContext in [podsecuritycontext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podsecuritycontext-v1-core)
+and [SecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#securitycontext-v1-core)
