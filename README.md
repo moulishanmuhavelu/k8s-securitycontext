@@ -24,6 +24,7 @@ uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10
 If you do not want to run this container as root, you need to specify securityContext.runAsUser property for your container which is explained in the next section.
 
 ### SecurityContext for Container
+##### runAsUser
 Create a Pod and assign the guest user(405) to the securityContext.runAsUser property. Here is the yaml file for the pod.
 
 ```
@@ -48,6 +49,7 @@ You will see that the container is assigned with the guest user id in the result
 ```
 uid=405(guest) gid=100(users)
 ```
+##### PrivilegedUser
 If you want to run your Pod to use the kernel features of the node, you can run the Pod with Privileged user as given in the yaml below
 
 ```
@@ -101,9 +103,9 @@ Once the pod is created, you can change the time with the command as below;
 kubectl exec kernel-change -- date +%T -s "12:00:00"
 kubectl exec kernel-change -- date
 ```
-##### Restrict file access only to volume and not the container file system
+##### Restrict file access to the container file system
 
-As the container file system is ephemeral, we can restrict the process from writing to local file system as given in the below yaml. We need to set readOnlyRootFilesystem property of the securityContext.
+As the container file system is ephemeral, we can restrict the process from writing to local file system and enable it for volume as given in the below yaml. We need to set readOnlyRootFilesystem property of the securityContext.
 
 ```
 apiVersion: v1
@@ -200,5 +202,5 @@ ls -l /tmp
 You will see that the file is assigned with same user id as 1111 but the groupid is root.
 
 ## Conclusion
-In this article, we have seen different options for SecurityContext for both Container level and Pod Level. You can refer all the options for SecurityContext in [podsecuritycontext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podsecuritycontext-v1-core)
+In this article, we have seen different options for SecurityContext for both Container level and Pod Level. You can refer all the options for SecurityContext in [PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podsecuritycontext-v1-core)
 and [SecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#securitycontext-v1-core)
